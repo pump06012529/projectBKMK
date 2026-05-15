@@ -565,6 +565,48 @@
                         class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
                         required>
                 </div>
+                <div class="col-span-2">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">กิจกรรมย่อยในโครงการ</label>
+                    <div class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                        <template x-for="(act, index) in projectForm.activities" :key="index">
+                            <div class="grid grid-cols-12 gap-3 items-end bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                                <div class="col-span-5">
+                                    <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1">ชื่อกิจกรรม</label>
+                                    <input type="text" x-model="act.activityName"
+                                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 transition"
+                                        placeholder="ระบุชื่อกิจกรรม">
+                                </div>
+                                <div class="col-span-3">
+                                    <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1">งบประมาณ</label>
+                                    <input type="number" x-model.number="act.budget"
+                                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 transition">
+                                </div>
+                                <div class="col-span-3">
+                                    <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1">ประเภทงบ</label>
+                                    <select x-model="act.budgetCategory"
+                                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 transition">
+                                        <option value="งบอุดหนุนรายหัว">งบอุดหนุน</option>
+                                        <option value="งบกิจกรรมพัฒนาผู้เรียน">งบพัฒนาฯ</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-1 text-center">
+                                    <button type="button" @click="removeActivity(index)" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                        <button @click="addActivity()" type="button"
+                            class="w-full py-2 border-2 border-dashed border-slate-300 text-slate-500 rounded-xl hover:bg-white hover:border-blue-400 hover:text-blue-500 transition font-medium text-sm">
+                            <i class="fas fa-plus mr-2"></i> เพิ่มกิจกรรมย่อย
+                        </button>
+                        <div class="mt-2 text-right text-xs font-bold text-slate-500">
+                            รวมอัตโนมัติจากกิจกรรมย่อย: อุดหนุน <span x-text="formatCurrency(calculateActivityBudget('งบอุดหนุนรายหัว'))"></span> | 
+                            พัฒนาฯ <span x-text="formatCurrency(calculateActivityBudget('งบกิจกรรมพัฒนาผู้เรียน'))"></span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="col-span-2 flex justify-end gap-3 mt-4">
                     <button type="button" @click="modals.project = false"
                         class="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">ยกเลิก</button>
@@ -665,7 +707,7 @@
                 budgetTypes: [],
 
                 // Forms
-                projectForm: { projectId: '', projectName: '', totalBudget: 0, budgetType: 'งบประมาณผสม', subsidy: 0, studentDev: 0, manager: '', department: '', status: 'Active', remainingSubsidy: 0, remainingStudentDev: 0 },
+                projectForm: { projectId: '', projectName: '', totalBudget: 0, budgetType: 'งบประมาณผสม', subsidy: 0, studentDev: 0, manager: '', department: '', status: 'Active', remainingSubsidy: 0, remainingStudentDev: 0, activities: [] },
                 trxForm: { projectId: '', amount: 0, term: 1, budgetCategory: 'งบอุดหนุนรายหัว', description: '', receiptUrl: '', submittedBy: '' },
                 userForm: { userId: '', fullname: '', username: '', password: '', role: 'ผู้รับผิดชอบโครงการ', department: '', status: 'Active' },
 
@@ -803,24 +845,57 @@
                 },
 
                 // Project Actions
-                openProjectModal(p = null) {
+                 openProjectModal(p = null) {
                     if (p) {
-                        this.projectForm = { ...p };
+                        this.projectForm = { ...p, activities: [] };
                         this.projectForm.subsidy = Number(p.subsidy) || 0;
                         this.projectForm.studentDev = Number(p.studentDev) || 0;
                         this.projectForm.totalBudget = Number(p.totalBudget) || 0;
+                        
+                        // Fetch activities
+                        this.callAPI('SUB_ACTIVITY_GET', { projectId: p.projectId }, (res) => {
+                            this.projectForm.activities = res.data || [];
+                        });
                     } else {
-                        this.projectForm = { projectId: '', projectName: '', totalBudget: 0, budgetType: 'งบประมาณผสม', subsidy: 0, studentDev: 0, manager: this.user.name, department: this.user.dept || this.departments[0]?.deptName, status: 'Active' };
+                        this.projectForm = { projectId: '', projectName: '', totalBudget: 0, budgetType: 'งบประมาณผสม', subsidy: 0, studentDev: 0, manager: this.user.name, department: this.user.dept || this.departments[0]?.deptName, status: 'Active', activities: [] };
                     }
                     this.modals.project = true;
                 },
 
+                addActivity() {
+                    this.projectForm.activities.push({ activityName: '', budget: 0, budgetCategory: 'งบอุดหนุนรายหัว' });
+                },
+
+                removeActivity(index) {
+                    this.projectForm.activities.splice(index, 1);
+                },
+
+                calculateActivityBudget(category) {
+                    return this.projectForm.activities
+                        .filter(a => a.budgetCategory === category)
+                        .reduce((sum, a) => sum + (Number(a.budget) || 0), 0);
+                },
+
                 saveProject() {
+                    // Update main budget from activities if any
+                    if (this.projectForm.activities.length > 0) {
+                        this.projectForm.subsidy = this.calculateActivityBudget('งบอุดหนุนรายหัว');
+                        this.projectForm.studentDev = this.calculateActivityBudget('งบกิจกรรมพัฒนาผู้เรียน');
+                        this.projectForm.totalBudget = this.projectForm.subsidy + this.projectForm.studentDev;
+                    }
+
                     this.callAPI('PROJECT_SAVE', this.projectForm, (res) => {
                         if (res.success) {
-                            this.modals.project = false;
-                            this.refreshAllData();
-                            Swal.fire('สำเร็จ', res.message, 'success');
+                            // Save sub activities
+                            this.callAPI('SUB_ACTIVITY_SAVE', { 
+                                projectId: res.id || this.projectForm.projectId, 
+                                items: this.projectForm.activities,
+                                isSync: true 
+                            }, () => {
+                                this.modals.project = false;
+                                this.refreshAllData();
+                                Swal.fire('สำเร็จ', 'บันทึกโครงการและกิจกรรมย่อยแล้ว', 'success');
+                            });
                         }
                     });
                 },

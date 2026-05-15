@@ -48,6 +48,10 @@ function apiRouter(request) {
         return projectService.bulkSave(data);
       case 'PROJECT_DELETE':
         return projectService.remove(data.id);
+      case 'SUB_ACTIVITY_SAVE':
+        return subActivityService.save(data);
+      case 'SUB_ACTIVITY_GET':
+        return subActivityService.getByProject(data.projectId);
       case 'TRANSACTION_GET_ALL':
         return transactionService.getAll();
       case 'TRANSACTION_SAVE':
@@ -80,6 +84,7 @@ function initDatabase() {
     'Users': ['userId', 'fullname', 'username', 'password', 'role', 'department', 'status'],
     'Projects': ['projectId', 'projectName', 'totalBudget', 'budgetType', 'subsidy', 'studentDev', 'manager', 'department', 'disbursementTerm1', 'disbursementTerm2', 'remainingSubsidy', 'remainingStudentDev', 'remainingBudget', 'status', 'createdAt'],
     'Transactions': ['transactionId', 'projectId', 'term', 'budgetCategory', 'amount', 'description', 'receiptUrl', 'status', 'submittedBy', 'approvedBy', 'timestamp'],
+    'SubActivities': ['subId', 'projectId', 'activityName', 'budget', 'budgetCategory'],
     'Departments': ['deptId', 'deptName'],
     'BudgetTypes': ['typeId', 'typeName'],
     'Logs': ['logId', 'userId', 'action', 'details', 'timestamp'],
@@ -202,15 +207,51 @@ const projectService = {
     });
     return { success: true, message: `Imported ${count} projects successfully` };
   },
-  remove(id) {
+   remove(id) {
     const sheet = SpreadsheetApp.openById(CONFIG.SHEET_ID).getSheetByName('Projects');
     const data = getSheetData('Projects');
     const index = data.findIndex(r => r.projectId === id);
     if (index > -1) {
       sheet.deleteRow(index + 2);
+      
+      // Also delete sub-activities
+      const subSheet = SpreadsheetApp.openById(CONFIG.SHEET_ID).getSheetByName('SubActivities');
+      const subs = getSheetData('SubActivities');
+      for (let i = subs.length - 1; i >= 0; i--) {
+        if (subs[i].projectId === id) {
+          subSheet.deleteRow(i + 2);
+        }
+      }
       return { success: true, message: 'Project deleted' };
     }
     throw new Error('Project not found');
+  }
+};
+
+const subActivityService = {
+  getByProject(projectId) {
+    return { success: true, data: getSheetData('SubActivities').filter(s => s.projectId === projectId) };
+  },
+  save(data) {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const sheet = ss.getSheetByName('SubActivities');
+    const existing = getSheetData('SubActivities');
+    
+    // Clear existing for this project first
+    for (let i = existing.length - 1; i >= 0; i--) {
+      if (existing[i].projectId === data.projectId) {
+        sheet.deleteRow(i + 2);
+      }
+    }
+    
+    // Add new items
+    if (data.items && data.items.length > 0) {
+      data.items.forEach(item => {
+        const newId = 'SUB-' + Utilities.getUuid().substring(0, 8);
+        sheet.appendRow([newId, data.projectId, item.activityName, item.budget, item.budgetCategory]);
+      });
+    }
+    return { success: true, message: 'Activities updated' };
   }
 };
 
