@@ -318,6 +318,9 @@
                             <button @click="$refs.csvInput.click()" class="px-6 py-2.5 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 shadow-lg shadow-amber-200 transition">
                                 <i class="fas fa-file-import mr-2"></i> นำเข้า CSV
                             </button>
+                            <button @click="downloadTemplate()" class="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition">
+                                <i class="fas fa-download mr-2"></i> เทมเพลต
+                            </button>
                             <input type="file" x-ref="csvInput" @change="importProjects($event)" class="hidden" accept=".csv">
                             <button @click="exportToExcel('projects')"
                                 class="px-6 py-2.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-200 transition">
@@ -932,6 +935,23 @@
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
                     link.download = filename;
+                    link.click();
+                },
+
+                downloadTemplate() {
+                    const headers = ['งาน/กิจกรรม', 'ประเภทงบประมาณ', 'ผู้รับผิดชอบ', 'อุดหนุนรายหัว', 'พัฒนาผู้เรียน', 'ฝ่ายงาน', 'การเบิกจ่าย เทอม 1', 'การเบิกจ่าย เทอม 2'];
+                    const rows = [
+                        ['ตัวอย่างโครงการที่ 1', 'งบประมาณผสม', 'นายสมชาย ใจดี', '10000', '5000', 'วิชาการ', '0', '0']
+                    ];
+                    const csvContent = [
+                        headers.join(','),
+                        ...rows.map(r => r.join(','))
+                    ].join('\n');
+
+                    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'project_template.csv';
                     link.click();
                 }
             }
