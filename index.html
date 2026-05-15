@@ -764,7 +764,6 @@
                 // Charts
                 initCharts(data) {
                     this.$nextTick(() => {
-                        // Type Chart
                         const typeCtx = document.getElementById('typeChart')?.getContext('2d');
                         if (typeCtx) {
                             if (window.myTypeChart) window.myTypeChart.destroy();
@@ -781,7 +780,6 @@
                             });
                         }
 
-                        // Dept Chart
                         const deptCtx = document.getElementById('deptChart')?.getContext('2d');
                         if (deptCtx) {
                             if (window.myDeptChart) window.myDeptChart.destroy();
@@ -812,6 +810,8 @@
                         this.projectForm = { projectId: '', projectName: '', totalBudget: 0, budgetType: 'งบประมาณผสม', subsidy: 0, studentDev: 0, manager: this.user.name, department: this.user.dept || this.departments[0]?.deptName, status: 'Active' };
                     }
                     this.modals.project = true;
+                },
+
                 saveProject() {
                     this.callAPI('PROJECT_SAVE', this.projectForm, (res) => {
                         if (res.success) {
@@ -848,7 +848,7 @@
                             });
                         }
                     });
-                    event.target.value = ''; // Reset
+                    event.target.value = '';
                 },
 
                 deleteProject(id) {
@@ -935,9 +935,7 @@
                     link.click();
                 }
             }
-            //test1111
         }
     </script>
 </body>
-
 </html>
