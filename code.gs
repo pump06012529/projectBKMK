@@ -179,12 +179,23 @@ const projectService = {
     
     dataArray.forEach((data, index) => {
       const newId = 'PJ-' + Utilities.formatDate(new Date(), "GMT+7", "yyyyMM") + '-' + (existing.length + count + 1).toString().padStart(3, '0');
-      const totalBudget = (Number(data.subsidy) || 0) + (Number(data.studentDev) || 0);
+      
+      // Map Thai headers to keys
+      const pName = data['งาน/กิจกรรม'] || data.projectName || '';
+      const bType = data['ประเภทงบประมาณ'] || data.budgetType || 'งบประมาณผสม';
+      const mng = data['ผู้รับผิดชอบ'] || data.manager || '';
+      const dept = data['ฝ่ายงาน'] || data.department || '';
+      const sub = Number(data['อุดหนุนรายหัว'] || data.subsidy || 0);
+      const stu = Number(data['พัฒนาผู้เรียน'] || data.studentDev || 0);
+      const d1 = Number(data['การเบิกจ่าย เทอม 1'] || data.disbursementTerm1 || 0);
+      const d2 = Number(data['การเบิกจ่าย เทอม 2'] || data.disbursementTerm2 || 0);
+      
+      const total = sub + stu;
+      
       const newRow = [
-        newId, data.projectName, totalBudget, data.budgetType || 'งบประมาณผสม',
-        Number(data.subsidy) || 0, Number(data.studentDev) || 0, 
-        data.manager || '', data.department || '',
-        0, 0, Number(data.subsidy) || 0, Number(data.studentDev) || 0, totalBudget, 'Active', new Date()
+        newId, pName, total, bType,
+        sub, stu, mng, dept,
+        d1, d2, sub - d1, stu - d2, total - d1 - d2, 'Active', new Date()
       ];
       sheet.appendRow(newRow);
       count++;
