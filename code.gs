@@ -44,6 +44,8 @@ function apiRouter(request) {
         return projectService.getAll();
       case 'PROJECT_SAVE':
         return projectService.save(data);
+      case 'PROJECT_BULK_SAVE':
+        return projectService.bulkSave(data);
       case 'PROJECT_DELETE':
         return projectService.remove(data.id);
       case 'TRANSACTION_GET_ALL':
@@ -168,6 +170,26 @@ const projectService = {
     ];
     sheet.appendRow(newRow);
     return { success: true, message: 'Project created', id: newId };
+  },
+  bulkSave(dataArray) {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const sheet = ss.getSheetByName('Projects');
+    const existing = getSheetData('Projects');
+    let count = 0;
+    
+    dataArray.forEach((data, index) => {
+      const newId = 'PJ-' + Utilities.formatDate(new Date(), "GMT+7", "yyyyMM") + '-' + (existing.length + count + 1).toString().padStart(3, '0');
+      const totalBudget = (Number(data.subsidy) || 0) + (Number(data.studentDev) || 0);
+      const newRow = [
+        newId, data.projectName, totalBudget, data.budgetType || 'งบประมาณผสม',
+        Number(data.subsidy) || 0, Number(data.studentDev) || 0, 
+        data.manager || '', data.department || '',
+        0, 0, Number(data.subsidy) || 0, Number(data.studentDev) || 0, totalBudget, 'Active', new Date()
+      ];
+      sheet.appendRow(newRow);
+      count++;
+    });
+    return { success: true, message: `Imported ${count} projects successfully` };
   },
   remove(id) {
     const sheet = SpreadsheetApp.openById(CONFIG.SHEET_ID).getSheetByName('Projects');

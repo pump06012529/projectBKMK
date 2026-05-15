@@ -13,6 +13,7 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
@@ -314,6 +315,10 @@
                                 class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition">
                                 <i class="fas fa-plus mr-2"></i> เพิ่มโครงการ
                             </button>
+                            <button @click="$refs.csvInput.click()" class="px-6 py-2.5 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 shadow-lg shadow-amber-200 transition">
+                                <i class="fas fa-file-import mr-2"></i> นำเข้า CSV
+                            </button>
+                            <input type="file" x-ref="csvInput" @change="importProjects($event)" class="hidden" accept=".csv">
                             <button @click="exportToExcel('projects')"
                                 class="px-6 py-2.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-200 transition">
                                 <i class="fas fa-file-excel mr-2"></i> Export
@@ -807,8 +812,6 @@
                         this.projectForm = { projectId: '', projectName: '', totalBudget: 0, budgetType: 'งบประมาณผสม', subsidy: 0, studentDev: 0, manager: this.user.name, department: this.user.dept || this.departments[0]?.deptName, status: 'Active' };
                     }
                     this.modals.project = true;
-                },
-
                 saveProject() {
                     this.callAPI('PROJECT_SAVE', this.projectForm, (res) => {
                         if (res.success) {
@@ -817,6 +820,35 @@
                             Swal.fire('สำเร็จ', res.message, 'success');
                         }
                     });
+                },
+
+                importProjects(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    Papa.parse(file, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            const data = results.data;
+                            if (data.length === 0) return Swal.fire('Error', 'ไม่พบข้อมูลในไฟล์', 'error');
+                            
+                            Swal.fire({
+                                title: 'กำลังนำเข้าข้อมูล...',
+                                html: `พบข้อมูลทั้งหมด ${data.length} รายการ`,
+                                allowOutsideClick: false,
+                                didOpen: () => { Swal.showLoading(); }
+                            });
+
+                            this.callAPI('PROJECT_BULK_SAVE', data, (res) => {
+                                if (res.success) {
+                                    this.refreshAllData();
+                                    Swal.fire('สำเร็จ', res.message, 'success');
+                                }
+                            });
+                        }
+                    });
+                    event.target.value = ''; // Reset
                 },
 
                 deleteProject(id) {
