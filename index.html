@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบริหารงบประมาณโครงการโรงเรียน</title>
+    <!-- CDNs -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+            min-height: 100vh;
+            transition: background-color 0.3s;
+        }
+
+        .dark body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f1f5f9;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .dark .glass {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-dark {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-item {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar-item:hover {
+            background: rgba(59, 130, 246, 0.1);
+            transform: translateX(8px);
+        }
+
+        .sidebar-item.active {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .card-gradient {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        /* DataTables Custom Style */
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: #3b82f6 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 8px !important;
+        }
+
+        .dark .dataTables_wrapper {
+            color: #e2e8f0;
+        }
+
+        [x-cloak] { display: none !important; }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .bottom-nav-item.active {
+            color: #3b82f6;
+        }
+        .bottom-nav-item.active i {
+            transform: translateY(-4px);
+        }
+    </style>
+</head>
+<body x-data="app()" x-init="init()" :class="{ 'dark': darkMode }" class="text-slate-800">
+
+    <!-- Loading Overlay -->
+    <div x-show="loading" class="fixed inset-0 z-[100] flex items-center justify-center bg-white/50 backdrop-blur-sm">
+        <div class="loader"></div>
+    </div>
+
+    <!-- Login Screen -->
+    <div x-show="!isLoggedIn" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-50">
+        <div class="w-full max-w-md p-8 glass rounded-3xl shadow-2xl border border-white/50">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-20 h-20 mb-4 bg-blue-600 rounded-2xl shadow-lg">
+                    <i class="fas fa-school text-4xl text-white"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800">ระบบบริหารงบประมาณ</h1>
+                <p class="text-slate-500">ลงชื่อเข้าใช้งานเพื่อเริ่มต้น</p>
+            </div>
+
+            <form @submit.prevent="login()" class="space-y-6">
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-slate-700">Username</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fas fa-user"></i>
+                        </span>
+                        <input x-model="auth.username" type="text" class="w-full pl-10 pr-4 py-3 bg-white/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="Username" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-slate-700">Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <input x-model="auth.password" type="password" class="w-full pl-10 pr-4 py-3 bg-white/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="••••••••" required>
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-4 font-bold text-white transition rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200">
+                    เข้าสู่ระบบ
+                </button>
+            </form>
+            
+            <div class="mt-8 pt-6 border-t border-slate-200 text-center">
+                <p class="text-xs text-slate-400">© 2026 Educational Budget Management System</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div x-show="isLoggedIn" x-cloak class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar Desktop -->
+        <aside class="hidden md:flex flex-col w-72 h-full glass border-r border-white/40">
+            <div class="p-8 flex items-center gap-4">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                    <i class="fas fa-chart-pie text-xl"></i>
+                </div>
+                <span class="font-bold text-xl tracking-tight text-blue-900">BudgetSys</span>
+            </div>
+
+            <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+                <template x-for="item in menuItems" :key="item.id">
+                    <button @click="currentView = item.id" 
+                        :class="currentView === item.id ? 'active' : 'text-slate-600 hover:text-blue-600'"
+                        class="sidebar-item flex items-center w-full px-4 py-3 rounded-xl font-medium transition-all duration-200">
+                        <i :class="item.icon" class="w-6 text-center mr-3"></i>
+                        <span x-text="item.title"></span>
+                    </button>
+                </template>
+            </nav>
+
+            <div class="p-4 mt-auto">
+                <div class="glass-dark rounded-2xl p-4 text-white">
+                    <div class="flex items-center gap-3 mb-3">
+                        <img :src="'https://ui-avatars.com/api/?name=' + user.name + '&background=0D8ABC&color=fff'" class="w-10 h-10 rounded-lg">
+                        <div class="overflow-hidden">
+                            <p class="font-bold truncate" x-text="user.name"></p>
+                            <p class="text-xs opacity-70" x-text="user.role"></p>
+                        </div>
+                    </div>
+                    <button @click="logout()" class="w-full py-2 bg-red-500/20 hover:bg-red-500/40 text-red-100 rounded-lg text-sm font-medium transition">
+                        <i class="fas fa-sign-out-alt mr-2"></i> ออกจากระบบ
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden bg-white/30">
+            
+            <!-- Header -->
+            <header class="h-20 flex items-center justify-between px-8 glass-dark text-white shrink-0">
+                <div class="flex items-center gap-4">
+                    <button @click="mobileMenuOpen = true" class="md:hidden text-2xl">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h2 class="text-lg font-bold" x-text="menuItems.find(m => m.id === currentView)?.title || 'Dashboard'"></h2>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-xs">
+                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        <span x-text="new Date().toLocaleDateString('th-TH', { dateStyle: 'long' })"></span>
+                    </div>
+                    <button @click="darkMode = !darkMode" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/10 transition">
+                        <i :class="darkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+                    </button>
+                    <button @click="init()" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/10 transition">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Scrollable Content -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 pb-24 md:pb-8">
+
+                <!-- VIEW: DASHBOARD -->
+                <div x-show="currentView === 'dashboard'" class="space-y-8">
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="glass rounded-3xl p-6 shadow-sm flex items-center gap-4 border-l-4 border-blue-500">
+                            <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-xl">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-500">โครงการทั้งหมด</p>
+                                <p class="text-2xl font-bold" x-text="stats.projectsCount"></p>
+                            </div>
+                        </div>
+                        <div class="glass rounded-3xl p-6 shadow-sm flex items-center gap-4 border-l-4 border-green-500">
+                            <div class="w-12 h-12 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-xl">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-500">งบประมาณรวม</p>
+                                <p class="text-2xl font-bold" x-text="formatCurrency(stats.totalBudget)"></p>
+                            </div>
+                        </div>
+                        <div class="glass rounded-3xl p-6 shadow-sm flex items-center gap-4 border-l-4 border-orange-500">
+                            <div class="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center text-xl">
+                                <i class="fas fa-receipt"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-500">เบิกจ่ายแล้ว</p>
+                                <p class="text-2xl font-bold" x-text="formatCurrency(stats.totalSpent)"></p>
+                            </div>
+                        </div>
+                        <div class="glass rounded-3xl p-6 shadow-sm flex items-center gap-4 border-l-4 border-indigo-500">
+                            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-xl">
+                                <i class="fas fa-coins"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-500">งบคงเหลือ</p>
+                                <p class="text-2xl font-bold" x-text="formatCurrency(stats.remaining)"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="glass rounded-3xl p-6 shadow-sm">
+                            <h3 class="font-bold text-lg mb-6">สัดส่วนงบประมาณตามประเภท</h3>
+                            <div class="h-64">
+                                <canvas id="typeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="glass rounded-3xl p-6 shadow-sm">
+                            <h3 class="font-bold text-lg mb-6">งบประมาณตามฝ่ายงาน</h3>
+                            <div class="h-64">
+                                <canvas id="deptChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: PROJECTS -->
+                <div x-show="currentView === 'projects'" class="space-y-6">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <h3 class="text-2xl font-bold text-slate-800">รายการโครงการ</h3>
+                        <div class="flex gap-2">
+                            <button @click="openProjectModal()" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition">
+                                <i class="fas fa-plus mr-2"></i> เพิ่มโครงการ
+                            </button>
+                            <button @click="exportToExcel('projects')" class="px-6 py-2.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-200 transition">
+                                <i class="fas fa-file-excel mr-2"></i> Export
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="glass rounded-3xl p-6 shadow-sm overflow-hidden">
+                        <table id="projectsTable" class="w-full text-left">
+                            <thead>
+                                <tr class="text-slate-500 text-sm border-b">
+                                    <th class="pb-4">รหัส</th>
+                                    <th class="pb-4">ชื่อโครงการ</th>
+                                    <th class="pb-4 text-right">งบประมาณ</th>
+                                    <th class="pb-4 text-right">คงเหลือ</th>
+                                    <th class="pb-4">ฝ่ายงาน</th>
+                                    <th class="pb-4">สถานะ</th>
+                                    <th class="pb-4 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="p in projects" :key="p.projectId">
+                                    <tr class="border-b hover:bg-slate-50/50 transition">
+                                        <td class="py-4 font-mono text-sm" x-text="p.projectId"></td>
+                                        <td class="py-4 font-medium" x-text="p.projectName"></td>
+                                        <td class="py-4 text-right font-bold text-blue-600" x-text="formatCurrency(p.totalBudget)"></td>
+                                        <td class="py-4 text-right font-bold text-green-600" x-text="formatCurrency(p.remainingBudget)"></td>
+                                        <td class="py-4" x-text="p.department"></td>
+                                        <td class="py-4">
+                                            <span :class="p.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" class="px-3 py-1 rounded-full text-xs font-bold" x-text="p.status"></span>
+                                        </td>
+                                        <td class="py-4 text-center">
+                                            <div class="flex justify-center gap-2">
+                                                <button @click="editProject(p)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"><i class="fas fa-edit"></i></button>
+                                                <button @click="deleteProject(p.projectId)" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- VIEW: TRANSACTIONS (DISBURSEMENTS) -->
+                <div x-show="currentView === 'transactions'" class="space-y-6">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <h3 class="text-2xl font-bold text-slate-800">รายการเบิกจ่าย</h3>
+                        <div class="flex gap-2">
+                            <button @click="openTransactionModal()" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition">
+                                <i class="fas fa-paper-plane mr-2"></i> ส่งคำขอเบิก
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="glass rounded-3xl p-6 shadow-sm">
+                        <table id="transactionsTable" class="w-full text-left">
+                            <thead>
+                                <tr class="text-slate-500 text-sm border-b">
+                                    <th class="pb-4">วันที่</th>
+                                    <th class="pb-4">โครงการ</th>
+                                    <th class="pb-4">รายการ</th>
+                                    <th class="pb-4 text-right">จำนวนเงิน</th>
+                                    <th class="pb-4">หมวดงบ</th>
+                                    <th class="pb-4">เทอม</th>
+                                    <th class="pb-4">สถานะ</th>
+                                    <th class="pb-4 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="t in transactions" :key="t.transactionId">
+                                    <tr class="border-b hover:bg-slate-50/50 transition">
+                                        <td class="py-4 text-sm" x-text="new Date(t.timestamp).toLocaleDateString('th-TH')"></td>
+                                        <td class="py-4 font-medium text-sm" x-text="projects.find(p => p.projectId === t.projectId)?.projectName || t.projectId"></td>
+                                        <td class="py-4 text-sm" x-text="t.description"></td>
+                                        <td class="py-4 text-right font-bold" x-text="formatCurrency(t.amount)"></td>
+                                        <td class="py-4 text-sm" x-text="t.budgetCategory || '-'"></td>
+                                        <td class="py-4 text-sm text-center" x-text="t.term"></td>
+                                        <td class="py-4">
+                                            <span :class="{
+                                                'bg-yellow-100 text-yellow-700': t.status === 'Pending',
+                                                'bg-green-100 text-green-700': t.status === 'Approved',
+                                                'bg-red-100 text-red-700': t.status === 'Rejected'
+                                            }" class="px-3 py-1 rounded-full text-xs font-bold" x-text="t.status"></span>
+                                        </td>
+                                        <td class="py-4 text-center">
+                                            <div class="flex justify-center gap-2">
+                                                <template x-if="t.receiptUrl">
+                                                    <a :href="t.receiptUrl" target="_blank" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"><i class="fas fa-file-image"></i></a>
+                                                </template>
+                                                <template x-if="user.role === 'Admin' || user.role === 'หัวหน้าฝ่าย'">
+                                                    <button @click="approveTransaction(t.transactionId, 'Approved')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition" x-show="t.status === 'Pending'"><i class="fas fa-check"></i></button>
+                                                </template>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- VIEW: USERS -->
+                <div x-show="currentView === 'users' && user.role === 'Admin'" class="space-y-6">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <h3 class="text-2xl font-bold text-slate-800">จัดการผู้ใช้งาน</h3>
+                        <button @click="openUserModal()" class="px-6 py-2.5 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 transition">
+                            <i class="fas fa-user-plus mr-2"></i> เพิ่มผู้ใช้งาน
+                        </button>
+                    </div>
+
+                    <div class="glass rounded-3xl p-6 shadow-sm">
+                        <table id="usersTable" class="w-full text-left">
+                            <thead>
+                                <tr class="text-slate-500 text-sm border-b">
+                                    <th class="pb-4">ชื่อ-นามสกุล</th>
+                                    <th class="pb-4">Username</th>
+                                    <th class="pb-4">บทบาท</th>
+                                    <th class="pb-4">ฝ่ายงาน</th>
+                                    <th class="pb-4">สถานะ</th>
+                                    <th class="pb-4 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="u in users" :key="u.userId">
+                                    <tr class="border-b hover:bg-slate-50/50 transition">
+                                        <td class="py-4 font-medium" x-text="u.fullname"></td>
+                                        <td class="py-4" x-text="u.username"></td>
+                                        <td class="py-4" x-text="u.role"></td>
+                                        <td class="py-4" x-text="u.department"></td>
+                                        <td class="py-4">
+                                            <span :class="u.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" class="px-3 py-1 rounded-full text-xs font-bold" x-text="u.status"></span>
+                                        </td>
+                                        <td class="py-4 text-center">
+                                            <button @click="editUser(u)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"><i class="fas fa-user-edit"></i></button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav x-show="isLoggedIn" class="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-white/40 h-20 px-6 flex items-center justify-between z-40">
+        <template x-for="item in menuItems.filter(m => !m.adminOnly || user.role === 'Admin')" :key="item.id">
+            <button @click="currentView = item.id" :class="currentView === item.id ? 'active' : 'text-slate-400'" class="bottom-nav-item flex flex-col items-center gap-1 transition-all duration-300">
+                <i :class="item.icon" class="text-xl"></i>
+                <span class="text-[10px] font-bold" x-text="item.title"></span>
+            </button>
+        </template>
+        <button @click="logout()" class="flex flex-col items-center gap-1 text-red-400">
+            <i class="fas fa-sign-out-alt text-xl"></i>
+            <span class="text-[10px] font-bold">ออก</span>
+        </button>
+    </nav>
+
+    <!-- MODALS -->
+    
+    <!-- Project Modal -->
+    <div x-show="modals.project" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <div class="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden" @click.away="modals.project = false">
+            <div class="px-8 py-6 bg-blue-600 text-white flex justify-between items-center">
+                <h4 class="text-xl font-bold" x-text="projectForm.projectId ? 'แก้ไขโครงการ' : 'เพิ่มโครงการใหม่'"></h4>
+                <button @click="modals.project = false" class="text-2xl opacity-70 hover:opacity-100">&times;</button>
+            </div>
+            <form @submit.prevent="saveProject()" class="p-8 grid grid-cols-2 gap-6">
+                <div class="col-span-2">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">ชื่อโครงการ/กิจกรรม</label>
+                    <input x-model="projectForm.projectName" type="text" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">งบอุดหนุนรายหัว (บาท)</label>
+                    <input x-model.number="projectForm.subsidy" @input="projectForm.totalBudget = Number(projectForm.subsidy) + Number(projectForm.studentDev)" type="number" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">งบพัฒนาผู้เรียน (บาท)</label>
+                    <input x-model.number="projectForm.studentDev" @input="projectForm.totalBudget = Number(projectForm.subsidy) + Number(projectForm.studentDev)" type="number" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
+                </div>
+                <div class="col-span-2">
+                    <div class="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex justify-between items-center">
+                        <span class="font-bold text-blue-800">งบประมาณรวมทั้งสิ้น:</span>
+                        <span class="text-xl font-bold text-blue-600" x-text="formatCurrency(projectForm.totalBudget)"></span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">ฝ่ายงาน</label>
+                    <select x-model="projectForm.department" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" required>
+                        <template x-for="d in departments" :key="d.deptId">
+                            <option :value="d.deptName" x-text="d.deptName"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">ผู้รับผิดชอบ</label>
+                    <input x-model="projectForm.manager" type="text" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" required>
+                </div>
+                <div class="col-span-2 flex justify-end gap-3 mt-4">
+                    <button type="button" @click="modals.project = false" class="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">ยกเลิก</button>
+                    <button type="submit" class="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition">บันทึกข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transaction Modal -->
+    <div x-show="modals.transaction" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden" @click.away="modals.transaction = false">
+            <div class="px-8 py-6 bg-indigo-600 text-white flex justify-between items-center">
+                <h4 class="text-xl font-bold">ส่งรายการเบิกจ่าย</h4>
+                <button @click="modals.transaction = false" class="text-2xl opacity-70 hover:opacity-100">&times;</button>
+            </div>
+            <form @submit.prevent="saveTransaction()" class="p-8 space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">เลือกโครงการ</label>
+                    <select x-model="trxForm.projectId" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition" required>
+                        <option value="">-- โปรดเลือกโครงการ --</option>
+                        <template x-for="p in activeProjects" :key="p.projectId">
+                            <option :value="p.projectId" x-text="p.projectName + ' (คงเหลือ: ' + formatCurrency(p.remainingBudget) + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">เบิกจากงบ</label>
+                        <select x-model="trxForm.budgetCategory" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition" required>
+                            <option value="งบอุดหนุนรายหัว">งบอุดหนุนรายหัว</option>
+                            <option value="งบกิจกรรมพัฒนาผู้เรียน">งบกิจกรรมพัฒนาผู้เรียน</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">เทอม</label>
+                        <select x-model="trxForm.term" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition" required>
+                            <option value="1">เทอม 1</option>
+                            <option value="2">เทอม 2</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">จำนวนเงินเบิก</label>
+                    <input x-model="trxForm.amount" type="number" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">รายละเอียด/รายการ</label>
+                    <textarea x-model="trxForm.description" rows="3" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition" required></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">แนบไฟล์ใบเสร็จ/หลักฐาน</label>
+                    <input type="file" @change="handleFileUpload($event)" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="modals.transaction = false" class="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">ยกเลิก</button>
+                    <button type="submit" class="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition">ส่งเบิก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script Section -->
+    <script>
+        function app() {
+            return {
+                isLoggedIn: false,
+                loading: false,
+                darkMode: false,
+                currentView: 'dashboard',
+                user: { id: '', name: '', role: '', dept: '' },
+                auth: { username: '', password: '' },
+                
+                // Data States
+                stats: { projectsCount: 0, totalBudget: 0, totalSpent: 0, remaining: 0 },
+                projects: [],
+                transactions: [],
+                users: [],
+                departments: [],
+                budgetTypes: [],
+                
+                // Forms
+                projectForm: { projectId: '', projectName: '', totalBudget: 0, budgetType: 'งบประมาณผสม', subsidy: 0, studentDev: 0, manager: '', department: '', status: 'Active' },
+                trxForm: { projectId: '', amount: 0, term: 1, budgetCategory: 'งบอุดหนุนรายหัว', description: '', receiptUrl: '', submittedBy: '' },
+                userForm: { userId: '', fullname: '', username: '', password: '', role: 'ผู้รับผิดชอบโครงการ', department: '', status: 'Active' },
+                
+                // Modals
+                modals: { project: false, transaction: false, user: false },
+                
+                menuItems: [
+                    { id: 'dashboard', title: 'Dashboard', icon: 'fas fa-home' },
+                    { id: 'projects', title: 'โครงการ', icon: 'fas fa-tasks' },
+                    { id: 'transactions', title: 'การเบิกจ่าย', icon: 'fas fa-exchange-alt' },
+                    { id: 'users', title: 'ผู้ใช้งาน', icon: 'fas fa-users', adminOnly: true },
+                    { id: 'reports', title: 'รายงาน', icon: 'fas fa-file-alt' }
+                ],
+
+                get activeProjects() {
+                    return this.projects.filter(p => p.status === 'Active');
+                },
+
+                init() {
+                    this.callAPI('INIT_APP', {}, (res) => {
+                        console.log('App Initialized');
+                        this.loadGlobalData();
+                    });
+                },
+
+                loadGlobalData() {
+                    // Logic to fetch all initial dropdowns
+                    google.script.run.withSuccessHandler((res) => {
+                        this.departments = [
+                            {deptId: 'D1', deptName: 'ฝ่ายวิชาการ'},
+                            {deptId: 'D2', deptName: 'ฝ่ายบริหารงบประมาณ'},
+                            {deptId: 'D3', deptName: 'ฝ่ายบริหารทั่วไป'},
+                            {deptId: 'D4', deptName: 'ฝ่ายกิจการนักเรียน'}
+                        ];
+                        this.budgetTypes = [
+                            {typeId: 'B1', typeName: 'งบอุดหนุนรายหัว'},
+                            {typeId: 'B2', typeName: 'งบพัฒนาผู้เรียน'},
+                            {typeId: 'B3', typeName: 'งบรายได้สถานศึกษา'}
+                        ];
+                    }).initDatabase();
+                },
+
+                login() {
+                    this.loading = true;
+                    this.callAPI('LOGIN', this.auth, (res) => {
+                        if (res.success) {
+                            this.user = res.user;
+                            this.isLoggedIn = true;
+                            this.fetchDashboard();
+                            this.refreshAllData();
+                            Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'ยินดีต้อนรับสู่ระบบ', timer: 1500, showConfirmButton: false });
+                        } else {
+                            Swal.fire('Error', res.message, 'error');
+                        }
+                    });
+                },
+
+                logout() {
+                    this.isLoggedIn = false;
+                    this.user = { id: '', name: '', role: '', dept: '' };
+                },
+
+                refreshAllData() {
+                    this.callAPI('PROJECT_GET_ALL', {}, (res) => this.projects = res.data);
+                    this.callAPI('TRANSACTION_GET_ALL', {}, (res) => this.transactions = res.data);
+                    if (this.user.role === 'Admin') {
+                        this.callAPI('USER_GET_ALL', {}, (res) => this.users = res.data);
+                    }
+                    this.fetchDashboard();
+                },
+
+                fetchDashboard() {
+                    this.callAPI('GET_DASHBOARD', {}, (res) => {
+                        this.stats = res.stats;
+                        this.initCharts(res.charts);
+                    });
+                },
+
+                // API Helper
+                callAPI(action, data, callback) {
+                    this.loading = true;
+                    google.script.run
+                        .withSuccessHandler((res) => {
+                            this.loading = false;
+                            if (callback) callback(res);
+                        })
+                        .withFailureHandler((err) => {
+                            this.loading = false;
+                            Swal.fire('System Error', err.message, 'error');
+                        })
+                        .apiRouter({ action, data });
+                },
+
+                // UI Helpers
+                formatCurrency(val) {
+                    return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(val);
+                },
+
+                // Charts
+                initCharts(data) {
+                    this.$nextTick(() => {
+                        // Type Chart
+                        const typeCtx = document.getElementById('typeChart')?.getContext('2d');
+                        if (typeCtx) {
+                            if (window.myTypeChart) window.myTypeChart.destroy();
+                            window.myTypeChart = new Chart(typeCtx, {
+                                type: 'doughnut',
+                                data: {
+                                    labels: Object.keys(data.byType),
+                                    datasets: [{
+                                        data: Object.values(data.byType),
+                                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+                                    }]
+                                },
+                                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                            });
+                        }
+
+                        // Dept Chart
+                        const deptCtx = document.getElementById('deptChart')?.getContext('2d');
+                        if (deptCtx) {
+                            if (window.myDeptChart) window.myDeptChart.destroy();
+                            window.myDeptChart = new Chart(deptCtx, {
+                                type: 'bar',
+                                data: {
+                                    labels: Object.keys(data.byDept),
+                                    datasets: [{
+                                        label: 'งบประมาณตามฝ่าย',
+                                        data: Object.values(data.byDept),
+                                        backgroundColor: '#3b82f6'
+                                    }]
+                                },
+                                options: { responsive: true, maintainAspectRatio: false }
+                            });
+                        }
+                    });
+                },
+
+                // Project Actions
+                openProjectModal(p = null) {
+                    if (p) {
+                        this.projectForm = { ...p };
+                        this.projectForm.subsidy = Number(p.subsidy) || 0;
+                        this.projectForm.studentDev = Number(p.studentDev) || 0;
+                        this.projectForm.totalBudget = Number(p.totalBudget) || 0;
+                    } else {
+                        this.projectForm = { projectId: '', projectName: '', totalBudget: 0, budgetType: 'งบประมาณผสม', subsidy: 0, studentDev: 0, manager: this.user.name, department: this.user.dept || this.departments[0]?.deptName, status: 'Active' };
+                    }
+                    this.modals.project = true;
+                },
+
+                saveProject() {
+                    this.callAPI('PROJECT_SAVE', this.projectForm, (res) => {
+                        if (res.success) {
+                            this.modals.project = false;
+                            this.refreshAllData();
+                            Swal.fire('สำเร็จ', res.message, 'success');
+                        }
+                    });
+                },
+
+                deleteProject(id) {
+                    Swal.fire({
+                        title: 'ยืนยันการลบ?',
+                        text: "ข้อมูลโครงการและประวัติจะหายไป!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#ef4444',
+                        confirmButtonText: 'ใช่, ลบเลย'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            this.callAPI('PROJECT_DELETE', { id }, (res) => {
+                                this.refreshAllData();
+                                Swal.fire('ลบแล้ว!', res.message, 'success');
+                            });
+                        }
+                    });
+                },
+
+                // Transaction Actions
+                openTransactionModal() {
+                    this.trxForm = { projectId: '', amount: 0, term: 1, budgetCategory: 'งบอุดหนุนรายหัว', description: '', receiptUrl: '', submittedBy: this.user.name };
+                    this.modals.transaction = true;
+                },
+
+                saveTransaction() {
+                    this.callAPI('TRANSACTION_SAVE', this.trxForm, (res) => {
+                        if (res.success) {
+                            this.modals.transaction = false;
+                            this.refreshAllData();
+                            Swal.fire('สำเร็จ', res.message, 'success');
+                        } else {
+                            Swal.fire('ผิดพลาด', res.message, 'error');
+                        }
+                    });
+                },
+
+                approveTransaction(id, status) {
+                    this.callAPI('TRANSACTION_APPROVE', { id, status }, (res) => {
+                        this.refreshAllData();
+                        Swal.fire('สำเร็จ', res.message, 'success');
+                    });
+                },
+
+                handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.callAPI('UPLOAD_FILE', {
+                            name: file.name,
+                            content: e.target.result
+                        }, (res) => {
+                            if (res.success) {
+                                this.trxForm.receiptUrl = res.url;
+                                Swal.fire('อัปโหลดไฟล์แล้ว', '', 'success');
+                            }
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                exportToExcel(type) {
+                    let data = [];
+                    let filename = type + '.csv';
+                    
+                    if (type === 'projects') data = this.projects;
+                    else if (type === 'transactions') data = this.transactions;
+                    
+                    if (data.length === 0) return Swal.fire('ไม่มีข้อมูลสำหรับการส่งออก', '', 'warning');
+                    
+                    const headers = Object.keys(data[0]);
+                    const csvContent = [
+                        headers.join(','),
+                        ...data.map(row => headers.map(h => `"${row[h]}"`).join(','))
+                    ].join('\n');
+                    
+                    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = filename;
+                    link.click();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
