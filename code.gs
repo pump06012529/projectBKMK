@@ -76,7 +76,7 @@ function initDatabase() {
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
   const sheets = {
     'Users': ['userId', 'fullname', 'username', 'password', 'role', 'department', 'status'],
-    'Projects': ['projectId', 'projectName', 'totalBudget', 'budgetType', 'subsidy', 'studentDev', 'manager', 'department', 'disbursementTerm1', 'disbursementTerm2', 'remainingBudget', 'status', 'createdAt'],
+    'Projects': ['projectId', 'projectName', 'totalBudget', 'budgetType', 'subsidy', 'studentDev', 'manager', 'department', 'disbursementTerm1', 'disbursementTerm2', 'remainingSubsidy', 'remainingStudentDev', 'remainingBudget', 'status', 'createdAt'],
     'Transactions': ['transactionId', 'projectId', 'term', 'budgetCategory', 'amount', 'description', 'receiptUrl', 'status', 'submittedBy', 'approvedBy', 'timestamp'],
     'Departments': ['deptId', 'deptName'],
     'BudgetTypes': ['typeId', 'typeName'],
@@ -149,6 +149,8 @@ const projectService = {
           data.projectId, data.projectName, data.totalBudget, data.budgetType,
           data.subsidy, data.studentDev, data.manager, data.department,
           data.disbursementTerm1 || 0, data.disbursementTerm2 || 0,
+          data.remainingSubsidy || data.subsidy,
+          data.remainingStudentDev || data.studentDev,
           data.totalBudget - (data.disbursementTerm1 || 0) - (data.disbursementTerm2 || 0),
           data.status, data.createdAt || new Date()
         ];
@@ -162,7 +164,7 @@ const projectService = {
     const newRow = [
       newId, data.projectName, data.totalBudget, data.budgetType,
       data.subsidy, data.studentDev, data.manager, data.department,
-      0, 0, data.totalBudget, 'Active', new Date()
+      0, 0, data.subsidy, data.studentDev, data.totalBudget, 'Active', new Date()
     ];
     sheet.appendRow(newRow);
     return { success: true, message: 'Project created', id: newId };
@@ -328,11 +330,20 @@ function updateProjectBudget(projectId, term, amount) {
     const current = Number(sheet.getRange(index + 2, col).getValue());
     sheet.getRange(index + 2, col).setValue(current + Number(amount));
     
-    // Recalculate remaining
+    // Update category-specific remaining
+    if (trx.budgetCategory === 'งบอุดหนุนรายหัว') {
+      const rem = Number(sheet.getRange(index + 2, 11).getValue());
+      sheet.getRange(index + 2, 11).setValue(rem - Number(amount));
+    } else if (trx.budgetCategory === 'งบกิจกรรมพัฒนาผู้เรียน') {
+      const rem = Number(sheet.getRange(index + 2, 12).getValue());
+      sheet.getRange(index + 2, 12).setValue(rem - Number(amount));
+    }
+
+    // Recalculate total remaining
     const total = Number(sheet.getRange(index + 2, 3).getValue());
     const t1 = Number(sheet.getRange(index + 2, 9).getValue());
     const t2 = Number(sheet.getRange(index + 2, 10).getValue());
-    sheet.getRange(index + 2, 11).setValue(total - t1 - t2);
+    sheet.getRange(index + 2, 13).setValue(total - t1 - t2);
   }
 }
 

@@ -327,9 +327,10 @@
                                 <tr class="text-slate-500 text-sm border-b">
                                     <th class="pb-4">รหัส</th>
                                     <th class="pb-4">ชื่อโครงการ</th>
-                                    <th class="pb-4 text-right">งบประมาณ</th>
-                                    <th class="pb-4 text-right">คงเหลือ</th>
                                     <th class="pb-4">ฝ่ายงาน</th>
+                                    <th class="pb-4 text-right">งบอุดหนุนคงเหลือ</th>
+                                    <th class="pb-4 text-right">งบพัฒนาฯคงเหลือ</th>
+                                    <th class="pb-4 text-right">คงเหลือสุทธิ</th>
                                     <th class="pb-4">สถานะ</th>
                                     <th class="pb-4 text-center">จัดการ</th>
                                 </tr>
@@ -339,11 +340,10 @@
                                     <tr class="border-b hover:bg-slate-50/50 transition">
                                         <td class="py-4 font-mono text-sm" x-text="p.projectId"></td>
                                         <td class="py-4 font-medium" x-text="p.projectName"></td>
-                                        <td class="py-4 text-right font-bold text-blue-600"
-                                            x-text="formatCurrency(p.totalBudget)"></td>
-                                        <td class="py-4 text-right font-bold text-green-600"
-                                            x-text="formatCurrency(p.remainingBudget)"></td>
                                         <td class="py-4" x-text="p.department"></td>
+                                        <td class="py-4 text-right font-medium text-slate-600" x-text="formatCurrency(p.remainingSubsidy)"></td>
+                                        <td class="py-4 text-right font-medium text-slate-600" x-text="formatCurrency(p.remainingStudentDev)"></td>
+                                        <td class="py-4 text-right font-bold text-green-600" x-text="formatCurrency(p.remainingBudget)"></td>
                                         <td class="py-4">
                                             <span
                                                 :class="p.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
@@ -586,8 +586,7 @@
                         <option value="">-- โปรดเลือกโครงการ --</option>
                         <template x-for="p in activeProjects" :key="p.projectId">
                             <option :value="p.projectId"
-                                x-text="p.projectName + ' (คงเหลือ: ' + formatCurrency(p.remainingBudget) + ')'">
-                            </option>
+                                x-text="p.projectName + ' (คงเหลือ: ' + formatCurrency(p.remainingBudget) + ') [งบอุดหนุน: ' + formatCurrency(p.remainingSubsidy) + ' | งบพัฒนาฯ: ' + formatCurrency(p.remainingStudentDev) + ']'"></option>
                         </template>
                     </select>
                 </div>
@@ -658,7 +657,7 @@
                 budgetTypes: [],
 
                 // Forms
-                projectForm: { projectId: '', projectName: '', totalBudget: 0, budgetType: 'งบประมาณผสม', subsidy: 0, studentDev: 0, manager: '', department: '', status: 'Active' },
+                projectForm: { projectId: '', projectName: '', totalBudget: 0, budgetType: 'งบประมาณผสม', subsidy: 0, studentDev: 0, manager: '', department: '', status: 'Active', remainingSubsidy: 0, remainingStudentDev: 0 },
                 trxForm: { projectId: '', amount: 0, term: 1, budgetCategory: 'งบอุดหนุนรายหัว', description: '', receiptUrl: '', submittedBy: '' },
                 userForm: { userId: '', fullname: '', username: '', password: '', role: 'ผู้รับผิดชอบโครงการ', department: '', status: 'Active' },
 
